@@ -366,6 +366,24 @@
             margin-bottom: 5px;
         }
 
+        /* File Upload & Drag Drop Styles */
+        #fileList {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            min-height: 50px;
+        }
+
+        .file-item {
+            padding: 5px 10px;
+            background-color: #e3f2fd;
+            border-radius: 3px;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+
         @media (max-width: 768px) {
             .config-grid {
                 grid-template-columns: 1fr;
@@ -388,9 +406,11 @@
         <div class="controls">
             <div class="button-group">
                 <button id="selectBtn" class="btn-primary">Excel 파일 선택</button>
-                <button id="processBtn" class="btn-success" disabled>데이터 처리</button>
-                <button id="exportBtn" class="btn-secondary" disabled>결과 내보내기</button>
+                <button id="processBtn" class="btn-secondary" disabled>데이터 처리</button>
+                <button id="exportBtn" class="btn-success" disabled>결과 내보내기</button>
             </div>
+
+            <div id="fileList"></div>
 
             <!-- Processing Mode Selection -->
             <div class="mode-selection">

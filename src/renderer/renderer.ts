@@ -76,16 +76,27 @@ class TaxCalculatorApp {
       const files = await window.electronAPI.selectFiles();
       if (files && files.length > 0) {
         this.selectedFiles = files;
-        this.showStatus(`${files.length}개 파일이 선택되었습니다.`);
+        this.updateFileStatus(files);
         
         // Load column headers from the first file
         await this.loadColumnHeaders(files[0]);
         
         this.enableProcessButton();
       }
-    } catch (error) {
+    } catch (error: any) {
       this.showError(`파일 선택 중 오류 발생: ${error.message}`);
     }
+  }
+
+  private updateFileStatus(files: string[]) {
+    const fileListElement = document.getElementById('fileList');
+    if (fileListElement) {
+      fileListElement.innerHTML = files.map(file => {
+        const fileName = file.split(/[/\\]/).pop() || file;
+        return `<div class="file-item">${fileName}</div>`;
+      }).join('');
+    }
+    this.showStatus(`${files.length}개 파일이 선택되었습니다.`);
   }
 
   private async loadColumnHeaders(filePath: string) {
@@ -382,7 +393,7 @@ class TaxCalculatorApp {
           </tbody>
         </table>
         <div class="summary">
-          <h4>연간 합계</h4>
+          <h4>월간 합계</h4>
           <div class="summary-grid">
             <div class="summary-item">
               <div class="summary-label">면세금액</div>
