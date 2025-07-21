@@ -59,6 +59,12 @@ class TaxCalculatorApp {
     const taxTypeOptions = document.getElementById('taxTypeOptions');
     const taxTypeConfig = document.getElementById('taxTypeConfig');
     
+    // Reset multi-column checkbox and UI when switching modes
+    const multiColumnCheckbox = document.getElementById('useMultiColumnSum') as HTMLInputElement;
+    const multiColumnConfig = document.getElementById('multiColumnConfig');
+    const amountColumn = document.getElementById('amountColumn') as HTMLSelectElement;
+    const amountColumnGroup = amountColumn?.closest('.option-group') as HTMLElement;
+    
     if (taxTypeMode?.checked) {
       traditionalOptions!.style.display = 'none';
       taxTypeOptions!.style.display = 'grid';
@@ -67,6 +73,17 @@ class TaxCalculatorApp {
       traditionalOptions!.style.display = 'grid';
       taxTypeOptions!.style.display = 'none';
       taxTypeConfig!.style.display = 'none';
+      
+      // Reset multi-column state when switching to traditional mode
+      if (multiColumnCheckbox) {
+        multiColumnCheckbox.checked = false;
+      }
+      if (multiColumnConfig) {
+        multiColumnConfig.style.display = 'none';
+      }
+      if (amountColumnGroup) {
+        amountColumnGroup.style.display = 'flex';
+      }
     }
   }
 
