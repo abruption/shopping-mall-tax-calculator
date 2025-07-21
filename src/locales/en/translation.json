@@ -1,0 +1,55 @@
+{
+  "app": {
+    "title": "Shopping Mall Tax Calculator"
+  },
+  "buttons": {
+    "scanDirectory": "Scan @xlsx folder",
+    "selectFiles": "Select Excel files",
+    "processData": "Process Data",
+    "exportResults": "Export Results"
+  },
+  "labels": {
+    "dateColumn": "Date Column Name",
+    "taxExemptColumn": "Tax Exempt Column Name",
+    "taxableColumn": "Taxable Column Name",
+    "sheetName": "Sheet Name (Optional)"
+  },
+  "placeholders": {
+    "dateColumn": "Date",
+    "taxExemptColumn": "Tax Exempt Amount",
+    "taxableColumn": "Taxable Amount",
+    "sheetName": "Use first sheet"
+  },
+  "table": {
+    "yearMonth": "Year/Month",
+    "taxExemptAmount": "Tax Exempt",
+    "taxableAmount": "Taxable",
+    "total": "Total"
+  },
+  "summary": {
+    "title": "Annual Summary",
+    "taxExempt": "Tax Exempt",
+    "taxable": "Taxable",
+    "total": "Total"
+  },
+  "status": {
+    "scanning": "Scanning @xlsx folder...",
+    "foundFiles": "Found {{fileCount}} files from {{mallCount}} shopping malls.",
+    "noFiles": "No Excel files found in @xlsx folder.",
+    "filesSelected": "{{count}} files selected.",
+    "processing": "Processing data...",
+    "completed": "Data processing completed.",
+    "exported": "File saved: {{path}}"
+  },
+  "errors": {
+    "scanError": "Error during scan: {{error}}",
+    "selectError": "Error selecting files: {{error}}",
+    "noFilesToProcess": "No files to process.",
+    "processError": "Error processing: {{error}}",
+    "noResultsToExport": "No results to export.",
+    "exportError": "Error exporting: {{error}}"
+  },
+  "export": {
+    "formatPrompt": "Export as Excel format? (Cancel for CSV)"
+  }
+}

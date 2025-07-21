@@ -1,0 +1,64 @@
+{
+  "name": "tax-calculator-electron",
+  "version": "1.0.0",
+  "main": "dist/src/main/main.js",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "start": "pnpm run build && electron .",
+    "dev": "concurrently \"pnpm run watch\" \"electron .\"",
+    "watch": "swc src -d dist --watch",
+    "pack": "pnpm run build && electron-builder --dir",
+    "dist": "pnpm run build && electron-builder",
+    "dist:mac": "pnpm run build && electron-builder --mac",
+    "dist:win": "pnpm run build && electron-builder --win",
+    "test": "jest",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@swc/cli": "^0.7.8",
+    "@swc/core": "^1.13.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.15",
+    "concurrently": "^9.2.0",
+    "electron": "^37.2.3",
+    "electron-builder": "^26.0.12",
+    "fs-extra": "^11.3.0",
+    "jest": "^30.0.4",
+    "swc-loader": "^0.2.6",
+    "ts-jest": "^29.4.0",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "electron-store": "^10.1.0",
+    "i18next": "^25.3.2",
+    "i18next-node-fs-backend": "^2.1.3",
+    "xlsx": "^0.18.5"
+  },
+  "build": {
+    "appId": "com.shoppingmall.taxcalculator",
+    "productName": "Shopping Mall Tax Calculator",
+    "directories": {
+      "output": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "@xlsx/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.icns"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

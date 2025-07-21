@@ -1,0 +1,55 @@
+{
+  "app": {
+    "title": "쇼핑몰 세금 계산기"
+  },
+  "buttons": {
+    "scanDirectory": "@xlsx 폴더 스캔",
+    "selectFiles": "Excel 파일 선택",
+    "processData": "데이터 처리",
+    "exportResults": "결과 내보내기"
+  },
+  "labels": {
+    "dateColumn": "날짜 컬럼명",
+    "taxExemptColumn": "면세금액 컬럼명",
+    "taxableColumn": "과세금액 컬럼명",
+    "sheetName": "시트명 (선택사항)"
+  },
+  "placeholders": {
+    "dateColumn": "날짜",
+    "taxExemptColumn": "면세금액",
+    "taxableColumn": "과세금액",
+    "sheetName": "첫 번째 시트 사용"
+  },
+  "table": {
+    "yearMonth": "년월",
+    "taxExemptAmount": "면세금액",
+    "taxableAmount": "과세금액",
+    "total": "합계"
+  },
+  "summary": {
+    "title": "연간 합계",
+    "taxExempt": "면세금액",
+    "taxable": "과세금액",
+    "total": "총 합계"
+  },
+  "status": {
+    "scanning": "@xlsx 폴더를 스캔하는 중...",
+    "foundFiles": "{{mallCount}}개 쇼핑몰에서 총 {{fileCount}}개 파일을 찾았습니다.",
+    "noFiles": "@xlsx 폴더에 Excel 파일이 없습니다.",
+    "filesSelected": "{{count}}개 파일이 선택되었습니다.",
+    "processing": "데이터 처리 중...",
+    "completed": "데이터 처리가 완료되었습니다.",
+    "exported": "파일이 저장되었습니다: {{path}}"
+  },
+  "errors": {
+    "scanError": "스캔 중 오류 발생: {{error}}",
+    "selectError": "파일 선택 중 오류 발생: {{error}}",
+    "noFilesToProcess": "처리할 파일이 없습니다.",
+    "processError": "처리 중 오류 발생: {{error}}",
+    "noResultsToExport": "내보낼 결과가 없습니다.",
+    "exportError": "내보내기 중 오류 발생: {{error}}"
+  },
+  "export": {
+    "formatPrompt": "Excel 형식으로 내보내시겠습니까? (취소를 누르면 CSV로 내보냅니다)"
+  }
+}

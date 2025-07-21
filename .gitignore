@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Excel test files (keep structure but ignore actual files)
+@xlsx/**/*.xlsx
+@xlsx/**/*.xls
+!@xlsx/.gitkeep
+
+# Debug files
+debug-*.js
+*.debug.js
+
+# Package manager lockfiles (keep only one)
+yarn.lock
+
+# TypeScript incremental compilation info
+*.tsbuildinfo
+
+# Runtime configuration
+.electron-vue/
+.vscode/settings.json
+
+# Build artifacts
+*.tgz
+*.tar.gz
+
+# Documentation artifacts
+excel-header-scan-report.json
