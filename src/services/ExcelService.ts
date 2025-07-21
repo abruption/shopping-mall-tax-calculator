@@ -4,6 +4,7 @@ import * as path from 'path';
 import { MonthlyData, ProcessingOptions } from '../types';
 
 export class ExcelService {
+  private sikbomDateContext: { year: number; month: number } | null = null;
   async readExcelFile(filePath: string, options: ProcessingOptions): Promise<MonthlyData[]> {
     const workbook = XLSX.readFile(filePath);
     const sheetName = options.sheetName || workbook.SheetNames[0];
@@ -40,6 +41,9 @@ export class ExcelService {
       // Use array of arrays for better merged cell handling
       const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
       
+      // Extract Sikbom date context from title rows (for day-only date parsing)
+      this.extractSikbomDateContext(rawData as any[][]);
+      
       // Process merged cells - fill in the blanks
       const processedData = this.processMergedCells(rawData as any[][], merges);
       
@@ -73,6 +77,9 @@ export class ExcelService {
     } else {
       // No merged cells, use standard approach with dynamic header row
       const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false });
+      
+      // Extract Sikbom date context from title rows (for day-only date parsing)
+      this.extractSikbomDateContext(rawData as any[][]);
       
       if (rawData.length > Math.max(...headerRows)) {
         let headers: any[];
@@ -141,40 +148,119 @@ export class ExcelService {
       const availableColumns = Object.keys(sampleRow);
       const missingColumns = [];
       
-      if (!availableColumns.includes(options.dateColumn)) {
+      // Helper function to normalize header names for flexible matching
+      const normalizeHeader = (headerName: string): string => {
+        return headerName
+          .replace(/\n/g, ' ')       // Replace newlines with spaces
+          .replace(/\s+/g, ' ')      // Replace multiple spaces with single space
+          .trim()                    // Remove leading/trailing spaces
+          .toLowerCase();            // Convert to lowercase for case-insensitive matching
+      };
+      
+      // Helper function to find matching column with flexible matching
+      const findMatchingColumn = (searchColumn: string): string | null => {
+        const normalizedSearch = normalizeHeader(searchColumn);
+        
+        // Try exact match first
+        if (availableColumns.includes(searchColumn)) {
+          return searchColumn;
+        }
+        
+        // Try flexible matching
+        const matchingColumn = availableColumns.find(col => 
+          normalizeHeader(col) === normalizedSearch
+        );
+        
+        if (matchingColumn) {
+          return matchingColumn;
+        }
+        
+        // Special handling for Sikbom-style headers with pattern matching
+        // If looking for "확정 정산대상금액 (A-B) > 면세", also try to find any column 
+        // that contains "확정 정산대상금액" and "면세"
+        if (normalizedSearch.includes('확정 정산대상금액') && normalizedSearch.includes('면세')) {
+          const patternMatch = availableColumns.find(col => {
+            const normalizedCol = normalizeHeader(col);
+            return normalizedCol.includes('확정 정산대상금액') && normalizedCol.includes('면세');
+          });
+          if (patternMatch) {
+            return patternMatch;
+          }
+        }
+        
+        return null;
+      };
+      
+      // Check date column with flexible matching
+      const matchedDateColumn = findMatchingColumn(options.dateColumn);
+      if (!matchedDateColumn) {
         missingColumns.push(`날짜 컬럼 '${options.dateColumn}'`);
+      } else if (matchedDateColumn !== options.dateColumn) {
+        // Update options with the actual column name found
+        console.log(`Date column flexible match: '${options.dateColumn}' → '${matchedDateColumn}'`);
+        options.dateColumn = matchedDateColumn;
       }
       
       if (options.useTaxTypeClassification) {
-        if (!availableColumns.includes(options.taxTypeColumn!)) {
+        // Check tax type column
+        const matchedTaxTypeColumn = findMatchingColumn(options.taxTypeColumn!);
+        if (!matchedTaxTypeColumn) {
           missingColumns.push(`과세유형 컬럼 '${options.taxTypeColumn}'`);
+        } else if (matchedTaxTypeColumn !== options.taxTypeColumn) {
+          console.log(`Tax type column flexible match: '${options.taxTypeColumn}' → '${matchedTaxTypeColumn}'`);
+          options.taxTypeColumn = matchedTaxTypeColumn;
         }
         
         if (options.useMultiColumnSum) {
-          // Check all amount columns exist
+          // Check all amount columns exist with flexible matching
+          const updatedAmountColumns: string[] = [];
           options.amountColumns?.forEach(colName => {
-            if (!availableColumns.includes(colName)) {
+            const matchedColumn = findMatchingColumn(colName);
+            if (!matchedColumn) {
               missingColumns.push(`금액 컬럼 '${colName}'`);
+            } else {
+              if (matchedColumn !== colName) {
+                console.log(`Amount column flexible match: '${colName}' → '${matchedColumn}'`);
+              }
+              updatedAmountColumns.push(matchedColumn);
             }
           });
+          options.amountColumns = updatedAmountColumns;
         } else {
           // Check single amount column
-          if (!availableColumns.includes(options.amountColumn!)) {
+          const matchedAmountColumn = findMatchingColumn(options.amountColumn!);
+          if (!matchedAmountColumn) {
             missingColumns.push(`금액 컬럼 '${options.amountColumn}'`);
+          } else if (matchedAmountColumn !== options.amountColumn) {
+            console.log(`Amount column flexible match: '${options.amountColumn}' → '${matchedAmountColumn}'`);
+            options.amountColumn = matchedAmountColumn;
           }
         }
       } else {
-        if (!availableColumns.includes(options.taxExemptColumn!)) {
+        // Traditional mode - check tax exempt and taxable columns
+        const matchedTaxExemptColumn = findMatchingColumn(options.taxExemptColumn!);
+        if (!matchedTaxExemptColumn) {
           missingColumns.push(`면세금액 컬럼 '${options.taxExemptColumn}'`);
+        } else if (matchedTaxExemptColumn !== options.taxExemptColumn) {
+          console.log(`Tax exempt column flexible match: '${options.taxExemptColumn}' → '${matchedTaxExemptColumn}'`);
+          options.taxExemptColumn = matchedTaxExemptColumn;
         }
-        if (!availableColumns.includes(options.taxableColumn!)) {
+        
+        const matchedTaxableColumn = findMatchingColumn(options.taxableColumn!);
+        if (!matchedTaxableColumn) {
           missingColumns.push(`과세금액 컬럼 '${options.taxableColumn}'`);
+        } else if (matchedTaxableColumn !== options.taxableColumn) {
+          console.log(`Taxable column flexible match: '${options.taxableColumn}' → '${matchedTaxableColumn}'`);
+          options.taxableColumn = matchedTaxableColumn;
         }
       }
       
       if (missingColumns.length > 0) {
         console.error('Missing columns:', missingColumns);
         console.error('Available columns:', availableColumns);
+        console.error('Available columns (normalized):', availableColumns.map(col => 
+          `'${col}' → '${normalizeHeader(col)}'`
+        ));
         throw new Error(`다음 컬럼을 찾을 수 없습니다: ${missingColumns.join(', ')}`);
       }
     }
@@ -208,16 +294,17 @@ export class ExcelService {
 
   private combineMultiRowHeaders(data: any[][], headerRows: number[]): string[] {
     if (headerRows.length < 2) {
-      // Single row header - return as is
+      // Single row header - return as is, filtering out empty values
       const headerRow = data[headerRows[0]] || [];
-      return headerRow.map(cell => (cell || '').toString().trim()).filter(header => header);
+      const headers = headerRow.map(cell => (cell || '').toString().trim()).filter(header => header);
+      console.log('Single row headers:', headers);
+      return headers;
     }
     
     const primaryRow = data[headerRows[0]] || [];
     const secondaryRow = data[headerRows[1]] || [];
     
     // Determine actual data range by finding the last meaningful column
-    // Use manual implementation of findLastIndex for compatibility
     let maxPrimaryCol = -1;
     for (let i = primaryRow.length - 1; i >= 0; i--) {
       if (primaryRow[i] && primaryRow[i].toString().trim() !== '') {
@@ -239,9 +326,121 @@ export class ExcelService {
     
     console.log(`Header processing: maxPrimaryCol=${maxPrimaryCol}, maxSecondaryCol=${maxSecondaryCol}, maxCols=${maxCols}`);
     
-    // Process each column individually to properly handle merged headers
+    // Check if this looks like a simple two-row header (StoreParm style) vs complex merged header (Cafe24/Sikbom style)
+    const secondaryNonEmptyCount = secondaryRow.filter(cell => cell && cell.toString().trim() !== '').length;
+    
+    // Special detection for Sikbom-style: if secondary row has many repeated tax/exempt patterns, it's complex
+    const sikbomRepeatedPattern = secondaryRow.filter(cell => {
+      const cellStr = cell ? cell.toString() : '';
+      return cellStr.includes('과세') || cellStr.includes('면세') || cellStr.includes('VAT');
+    });
+    
+    const isSimpleStructure = (
+      secondaryNonEmptyCount >= maxCols * 0.6 && // Secondary row is mostly filled
+      sikbomRepeatedPattern.length < maxCols * 0.5 // But doesn't have too many repeated tax patterns
+    );
+    
+    console.log(`Secondary row fill ratio: ${secondaryNonEmptyCount}/${maxCols} = ${(secondaryNonEmptyCount/maxCols).toFixed(2)}`);
+    console.log(`Sikbom repeated patterns: ${sikbomRepeatedPattern.length}/${maxCols} = ${(sikbomRepeatedPattern.length/maxCols).toFixed(2)}`);
+    console.log(`isSimpleStructure: ${isSimpleStructure}`);
+    
+    if (isSimpleStructure) {
+      // For simple structures like StoreParm, prefer the row with more complete headers
+      const primaryNonEmptyCount = primaryRow.filter(cell => cell && cell.toString().trim() !== '').length;
+      
+      if (secondaryNonEmptyCount > primaryNonEmptyCount) {
+        // Use secondary row as it has more complete headers
+        console.log('Using secondary row for simple structure');
+        const headers = secondaryRow.map(cell => (cell || '').toString().trim()).filter(header => header);
+        console.log('Simple structure headers:', headers);
+        return headers;
+      } else {
+        // Use primary row
+        console.log('Using primary row for simple structure');
+        const headers = primaryRow.map(cell => (cell || '').toString().trim()).filter(header => header);
+        console.log('Simple structure headers:', headers);
+        return headers;
+      }
+    }
+    
+    // For complex structures (Cafe24 style), use the original complex logic
+    console.log('Using complex multi-row header combination for Cafe24-style structure');
+    
+    // Build a map of which primary headers apply to which columns (for merged cells)
+    const primaryHeaderMap: string[] = new Array(maxCols).fill('');
+    
+    // For Sikbom-style files, we need to be more selective about which cells inherit headers
+    // Pattern: Each primary header spans exactly 2 columns (one for 과세, one for 면세)
+    // Exception: The date column (정산완료일) only spans 1 column
+    
     for (let colIndex = 0; colIndex < maxCols; colIndex++) {
       const primaryHeader = (primaryRow[colIndex] || '').toString().trim();
+      
+      if (primaryHeader) {
+        // Found a primary header - assign it to this column
+        primaryHeaderMap[colIndex] = primaryHeader;
+        
+        // For Sikbom pattern: if this column has 과세(VAT 포함), the next should be 면세 with same primary
+        const currentSecondaryHeader = (secondaryRow[colIndex] || '').toString().trim();
+        const nextColIndex = colIndex + 1;
+        
+        if (nextColIndex < maxCols && currentSecondaryHeader.includes('과세')) {
+          const nextPrimaryHeader = (primaryRow[nextColIndex] || '').toString().trim();
+          const nextSecondaryHeader = (secondaryRow[nextColIndex] || '').toString().trim();
+          
+          // If next column has no primary header but has '면세' secondary header, it inherits this primary
+          if (!nextPrimaryHeader && nextSecondaryHeader.includes('면세')) {
+            primaryHeaderMap[nextColIndex] = primaryHeader;
+          }
+        }
+      }
+    }
+    
+    console.log('Primary header map:', primaryHeaderMap);
+    
+    // Post-processing validation: fix any obviously wrong mappings
+    // In Sikbom files, if we see many "정산완료일(일별)" mappings for 면세 columns, it's wrong
+    const dateHeaderCount = primaryHeaderMap.filter(h => h === '정산완료일(일별)').length;
+    if (dateHeaderCount > 3) {
+      console.log('Detected incorrect header mapping, attempting to fix...');
+      
+      // Reset and rebuild using a simpler alternating pattern for Sikbom
+      primaryHeaderMap.fill('');
+      const processedCols = new Set<number>();
+      
+      for (let colIndex = 0; colIndex < maxCols; colIndex++) {
+        if (processedCols.has(colIndex)) {
+          continue; // Skip already processed columns
+        }
+        
+        const primaryHeader = (primaryRow[colIndex] || '').toString().trim();
+        const secondaryHeader = (secondaryRow[colIndex] || '').toString().trim();
+        
+        if (primaryHeader) {
+          // Found a primary header - this and the next column both use this header
+          primaryHeaderMap[colIndex] = primaryHeader;
+          processedCols.add(colIndex);
+          
+          // For Sikbom pattern: assign this primary to the next column too (if it has 면세)
+          const nextColIndex = colIndex + 1;
+          if (nextColIndex < maxCols) {
+            const nextSecondaryHeader = (secondaryRow[nextColIndex] || '').toString().trim();
+            console.log(`Fix check: Col ${colIndex} primary="${primaryHeader}", Col ${nextColIndex} secondary="${nextSecondaryHeader}"`);
+            if (nextSecondaryHeader.includes('면세')) {
+              primaryHeaderMap[nextColIndex] = primaryHeader;
+              processedCols.add(nextColIndex);
+              console.log(`Fixed mapping: Col ${nextColIndex} now maps to "${primaryHeader}"`);
+            }
+          }
+        }
+      }
+      
+      console.log('Fixed primary header map:', primaryHeaderMap);
+    }
+    
+    // Process each column individually to properly handle merged headers
+    for (let colIndex = 0; colIndex < maxCols; colIndex++) {
+      const primaryHeader = primaryHeaderMap[colIndex];
       const secondaryHeader = (secondaryRow[colIndex] || '').toString().trim();
       
       // Skip columns that have no data at all
@@ -260,23 +459,8 @@ export class ExcelService {
         // Only primary header exists
         finalHeader = primaryHeader;
       } else if (!primaryHeader && secondaryHeader) {
-        // Only secondary header exists - look for parent from merged cells
-        let parentHeader = '';
-        
-        // Look left for the nearest non-empty primary header (for merged cells)
-        for (let prevCol = colIndex - 1; prevCol >= 0; prevCol--) {
-          const prevPrimaryHeader = (primaryRow[prevCol] || '').toString().trim();
-          if (prevPrimaryHeader) {
-            parentHeader = prevPrimaryHeader;
-            break;
-          }
-        }
-        
-        if (parentHeader) {
-          finalHeader = `${parentHeader} > ${secondaryHeader}`;
-        } else {
-          finalHeader = secondaryHeader;
-        }
+        // Only secondary header exists (shouldn't happen with new logic)
+        finalHeader = secondaryHeader;
       }
       
       if (finalHeader) {
@@ -312,11 +496,19 @@ export class ExcelService {
     const taxableCol = options.taxableColumn || '과세금액';
 
     return rawData.map(row => {
-      const date = this.parseDate(row[dateCol]);
+      const dateValue = row[dateCol];
+      
+      // Skip summary rows and other non-data rows
+      if (this.isSummaryRow(dateValue)) {
+        console.log('Skipping summary row:', dateValue);
+        return null;
+      }
+      
+      const date = this.parseDate(dateValue);
       
       // Skip rows with invalid dates
       if (!date) {
-        console.warn('Skipping row due to invalid date:', row[dateCol]);
+        console.warn('Skipping row due to invalid date:', dateValue);
         return null;
       }
       
@@ -352,10 +544,18 @@ export class ExcelService {
     const groupedByDate = new Map<string, {date: Date, taxExempt: number, taxable: number}>();
 
     rawData.forEach(row => {
-      const date = this.parseDate(row[dateCol]);
+      const dateValue = row[dateCol];
+      
+      // Skip summary rows and other non-data rows
+      if (this.isSummaryRow(dateValue)) {
+        console.log('Skipping summary row:', dateValue);
+        return;
+      }
+      
+      const date = this.parseDate(dateValue);
       
       if (!date) {
-        console.warn('Skipping row due to invalid date:', row[dateCol]);
+        console.warn('Skipping row due to invalid date:', dateValue);
         return;
       }
       
@@ -573,7 +773,34 @@ export class ExcelService {
         }
       }
       
-      // Strategy 3: yyyy-MM-DD HH:mm:ss format (2024-07-21 09:30:00)
+      // Strategy 3: Korean AM/PM datetime format (2024-11-25 오전 10:31:08, 2024-11-25 오후 10:31:08)
+      const koreanAmPmDateTimeMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s+(오전|오후)\s+(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
+      if (koreanAmPmDateTimeMatch) {
+        const year = parseInt(koreanAmPmDateTimeMatch[1]);
+        const month = parseInt(koreanAmPmDateTimeMatch[2]);
+        const day = parseInt(koreanAmPmDateTimeMatch[3]);
+        const amPm = koreanAmPmDateTimeMatch[4];
+        let hour = parseInt(koreanAmPmDateTimeMatch[5]);
+        const minute = parseInt(koreanAmPmDateTimeMatch[6]);
+        const second = parseInt(koreanAmPmDateTimeMatch[7]);
+        
+        // Convert Korean AM/PM to 24-hour format
+        if (amPm === '오후' && hour !== 12) {
+          hour += 12;
+        } else if (amPm === '오전' && hour === 12) {
+          hour = 0;
+        }
+        
+        if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && 
+            day >= 1 && day <= 31 && hour >= 0 && hour <= 23 && 
+            minute >= 0 && minute <= 59 && second >= 0 && second <= 59) {
+          const result = new Date(year, month - 1, day, hour, minute, second);
+          console.log(`Parsed Korean AM/PM datetime: ${trimmed} → ${result.toISOString()}`);
+          return result;
+        }
+      }
+      
+      // Strategy 4: yyyy-MM-DD HH:mm:ss format (2024-07-21 09:30:00)
       const isoDateTimeMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
       if (isoDateTimeMatch) {
         const year = parseInt(isoDateTimeMatch[1]);
@@ -592,7 +819,7 @@ export class ExcelService {
         }
       }
       
-      // Strategy 4: yyyy-MM-dd format (2024-07-21)
+      // Strategy 5: yyyy-MM-dd format (2024-07-21)
       const isoDateMatch = trimmed.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
       if (isoDateMatch) {
         const year = parseInt(isoDateMatch[1]);
@@ -606,7 +833,7 @@ export class ExcelService {
         }
       }
       
-      // Strategy 5: yyyy.MM.dd HH:mm:ss format (2024.07.21 09:30:00)
+      // Strategy 6: yyyy.MM.dd HH:mm:ss format (2024.07.21 09:30:00)
       const dotDateTimeMatch = trimmed.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})\s+(\d{1,2}):(\d{1,2}):(\d{1,2})$/);
       if (dotDateTimeMatch) {
         const year = parseInt(dotDateTimeMatch[1]);
@@ -625,7 +852,7 @@ export class ExcelService {
         }
       }
       
-      // Strategy 6: yyyy.MM.dd format (2024.07.21)
+      // Strategy 7: yyyy.MM.dd format (2024.07.21)
       const dotDateMatch = trimmed.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})$/);
       if (dotDateMatch) {
         const year = parseInt(dotDateMatch[1]);
@@ -639,7 +866,7 @@ export class ExcelService {
         }
       }
       
-      // Strategy 7: Korean full date format (yyyy년 M월 D일)
+      // Strategy 8: Korean full date format (yyyy년 M월 D일)
       const koreanFullDateMatch = trimmed.match(/^(\d{4})년\s*(\d{1,2})월\s*(\d{1,2})일$/);
       if (koreanFullDateMatch) {
         const year = parseInt(koreanFullDateMatch[1]);
@@ -653,7 +880,7 @@ export class ExcelService {
         }
       }
       
-      // Strategy 8: MM/DD/YYYY format
+      // Strategy 9: MM/DD/YYYY format
       const usFormatMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       if (usFormatMatch) {
         const month = parseInt(usFormatMatch[1]);
@@ -667,7 +894,7 @@ export class ExcelService {
         }
       }
       
-      // Strategy 9: DD/MM/YYYY format
+      // Strategy 10: DD/MM/YYYY format
       const europeanFormatMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
       if (europeanFormatMatch) {
         const day = parseInt(europeanFormatMatch[1]);
@@ -682,7 +909,7 @@ export class ExcelService {
         }
       }
       
-      // Strategy 10: Try native Date constructor as fallback
+      // Strategy 11: Try native Date constructor as fallback
       try {
         const nativeDate = new Date(trimmed);
         if (!isNaN(nativeDate.getTime()) && nativeDate.getFullYear() >= 1900 && nativeDate.getFullYear() <= 2100) {
@@ -693,7 +920,28 @@ export class ExcelService {
         console.log(`Native Date constructor failed: ${error}`);
       }
       
-      // Strategy 11: Try Date.parse() as final fallback
+      // Strategy 12: Sikbom day-only format ("1일", "5일", etc.) with context
+      const sikbomDayMatch = trimmed.match(/^(\d{1,2})일\s*$/);
+      if (sikbomDayMatch) {
+        const day = parseInt(sikbomDayMatch[1]);
+        
+        // Try to get month/year context from the title row
+        const contextDate = this.getSikbomDateContext();
+        if (contextDate && day >= 1 && day <= 31) {
+          // Validate day against the month (rough check)
+          const year = contextDate.year;
+          const month = contextDate.month;
+          const daysInMonth = new Date(year, month, 0).getDate();
+          
+          if (day <= daysInMonth) {
+            const result = new Date(year, month - 1, day);
+            console.log(`Parsed Sikbom day-only format: ${trimmed} with context ${year}-${month} → ${result.toISOString()}`);
+            return result;
+          }
+        }
+      }
+      
+      // Strategy 13: Try Date.parse() as final fallback
       try {
         const timestamp = Date.parse(trimmed);
         if (!isNaN(timestamp)) {
@@ -721,6 +969,62 @@ export class ExcelService {
       return parseFloat(cleaned) || 0;
     }
     return 0;
+  }
+
+  private getSikbomDateContext(): { year: number; month: number } | null {
+    return this.sikbomDateContext;
+  }
+
+  private extractSikbomDateContext(data: any[][]): void {
+    // Reset context
+    this.sikbomDateContext = null;
+    
+    // Look for title row with format "YYYY년 MM월 총 매출" in first few rows
+    for (let rowIndex = 0; rowIndex < Math.min(data.length, 5); rowIndex++) {
+      const row = data[rowIndex];
+      if (row && row.length > 0) {
+        const cellValue = (row[0] || '').toString().trim();
+        
+        // Match pattern "YYYY년 MM월 총 매출" or similar
+        const contextMatch = cellValue.match(/(\d{4})년\s*(\d{1,2})월/);
+        if (contextMatch) {
+          const year = parseInt(contextMatch[1]);
+          const month = parseInt(contextMatch[2]);
+          
+          if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12) {
+            this.sikbomDateContext = { year, month };
+            console.log(`Extracted Sikbom date context: ${year}년 ${month}월 from "${cellValue}"`);
+            return;
+          }
+        }
+      }
+    }
+    
+    console.log('No Sikbom date context found in title rows');
+  }
+
+  private isSummaryRow(dateValue: any): boolean {
+    if (dateValue == null || dateValue === '') {
+      return false;
+    }
+    
+    const dateStr = String(dateValue).trim();
+    
+    // Check for common summary row indicators
+    const summaryPatterns = [
+      '합계',      // Total
+      '총계',      // Grand total
+      '계',        // Sum
+      '소계',      // Subtotal
+      '총합',      // Total sum
+      'total',     // English total
+      'sum',       // English sum
+      'subtotal'   // English subtotal
+    ];
+    
+    return summaryPatterns.some(pattern => 
+      dateStr.toLowerCase().includes(pattern.toLowerCase())
+    );
   }
 
   /**
@@ -891,52 +1195,132 @@ export class ExcelService {
       return { isMultiRow: false, headerRows: [primaryHeaderRow] };
     }
     
+    // Also check if there's a previous row that might be the real main header (for Sikbom style)
+    const prevRowIndex = primaryHeaderRow - 1;
+    const hasPrevRow = prevRowIndex >= 0 && prevRowIndex < data.length;
+    
     const primaryRow = data[primaryHeaderRow] || [];
     const nextRow = data[nextRowIndex] || [];
+    const prevRow = hasPrevRow ? (data[prevRowIndex] || []) : [];
     
-    // Look for patterns indicating multi-row headers:
-    // 1. Next row has empty cells aligned with primary row's content
-    // 2. Next row has headers where primary row has empty cells
-    // 3. Contains keywords like '과세금액', '면세금액' etc.
-    
+    // Enhanced detection logic to better distinguish file types
     let multiRowIndicators = 0;
     let totalCells = 0;
+    let mergedCellPatterns = 0;
+    let nextRowHeaderCount = 0;
     
-    const headerKeywords = ['과세금액', '면세금액', '금액', '수량', '건수', '합계'];
+    const headerKeywords = ['과세금액', '면세금액', '금액', '수량', '건수', '합계', '결제금액'];
+    const strongHeaderKeywords = ['과세금액', '면세금액', '결제금액']; // Stronger indicators for Cafe24-style files
+    const sikbomKeywords = ['과세', '면세', 'VAT']; // Sikbom-style keywords
     
     for (let i = 0; i < Math.max(primaryRow.length, nextRow.length); i++) {
+      if (i >= 20) break; // Limit check to first 20 columns for performance
+      
       totalCells++;
       
       const primaryCell = (primaryRow[i] || '').toString().trim();
       const nextCell = (nextRow[i] || '').toString().trim();
       
-      // Case 1: Primary has content, next is empty (typical merged cell pattern)
-      if (primaryCell && !nextCell) {
-        multiRowIndicators++;
+      // Case 1: Primary has content, next is empty (typical merged cell pattern in Cafe24)
+      if (primaryCell && !nextCell && primaryCell.length > 2) {
+        mergedCellPatterns++;
       }
       
-      // Case 2: Primary is empty, next has header-like content
-      if (!primaryCell && nextCell && headerKeywords.some(keyword => nextCell.includes(keyword))) {
-        multiRowIndicators += 2; // Weight this higher
+      // Case 2: Primary is empty, next has strong header keywords (Cafe24 pattern)
+      if (!primaryCell && nextCell && strongHeaderKeywords.some(keyword => nextCell.includes(keyword))) {
+        multiRowIndicators += 3; // High weight for strong pattern
+        nextRowHeaderCount++;
       }
       
-      // Case 3: Both have content but next looks like sub-header
+      // Case 3: Both have content and next contains sub-header keywords
       if (primaryCell && nextCell && headerKeywords.some(keyword => nextCell.includes(keyword))) {
         multiRowIndicators++;
       }
+      
+      // Case 4: Check for ">" pattern which is specific to Cafe24 merged headers
+      if (primaryCell.includes('>') || nextCell.includes('>')) {
+        multiRowIndicators += 2;
+      }
+      
+      // Case 5: Sikbom-style pattern detection - primary has main category, next has tax type
+      if (primaryCell && nextCell && 
+          (primaryCell.includes('주문금액') || primaryCell.includes('정산')) &&
+          sikbomKeywords.some(keyword => nextCell.includes(keyword))) {
+        multiRowIndicators += 3; // High weight for Sikbom pattern
+        nextRowHeaderCount++;
+      }
+      
+      // Case 6: Pattern where next row has repeating tax/exempt pattern
+      if (nextCell && sikbomKeywords.some(keyword => nextCell.includes(keyword))) {
+        multiRowIndicators++;
+        nextRowHeaderCount++;
+      }
     }
     
-    // If more than 40% of cells suggest multi-row structure
-    const multiRowScore = multiRowIndicators / totalCells;
-    const isMultiRow = multiRowScore > 0.4;
+    // Calculate different scores for better detection
+    const multiRowScore = multiRowIndicators / Math.max(totalCells, 1);
+    const mergedCellScore = mergedCellPatterns / Math.max(totalCells, 1);
+    const headerDensity = nextRowHeaderCount / Math.max(totalCells, 1);
     
-    console.log(`Multi-row header detection: score=${multiRowScore}, isMultiRow=${isMultiRow}`);
+    // Check for Sikbom-style structure where previous row contains main headers
+    let sikbomStyleDetected = false;
+    if (hasPrevRow) {
+      const prevNonEmptyCount = prevRow.filter(cell => cell && cell.toString().trim() !== '').length;
+      const primaryNonEmptyCount = primaryRow.filter(cell => cell && cell.toString().trim() !== '').length;
+      
+      // If previous row has substantial content and current row has repeating tax patterns
+      const sikbomMainHeaders = prevRow.filter(cell => {
+        const cellStr = cell ? cell.toString() : '';
+        return cellStr.includes('주문금액') || cellStr.includes('쿠폰') || cellStr.includes('정산') || cellStr.includes('현금영수증') || cellStr.includes('신용카드');
+      });
+      
+      const sikbomSubHeaders = primaryRow.filter(cell => {
+        const cellStr = cell ? cell.toString() : '';
+        return cellStr.includes('과세') || cellStr.includes('면세') || cellStr.includes('VAT');
+      });
+      
+      if (sikbomMainHeaders.length >= 2 && sikbomSubHeaders.length >= 4) {
+        sikbomStyleDetected = true;
+        console.log(`Sikbom-style structure detected: ${sikbomMainHeaders.length} main headers, ${sikbomSubHeaders.length} sub headers`);
+      }
+    }
+    
+    // More strict criteria: require strong evidence of multi-row structure
+    const isMultiRow = (
+      (multiRowScore > 0.3 && nextRowHeaderCount >= 2) || // Strong header pattern
+      (mergedCellScore > 0.4 && multiRowIndicators > 2) || // Strong merged pattern
+      (headerDensity > 0.2 && multiRowIndicators > 1) ||   // Dense header pattern
+      sikbomStyleDetected                                   // Sikbom-style detected
+    );
+    
+    console.log(`Multi-row header detection:`);
+    console.log(`  - multiRowScore: ${multiRowScore.toFixed(2)}`);
+    console.log(`  - mergedCellScore: ${mergedCellScore.toFixed(2)}`);
+    console.log(`  - headerDensity: ${headerDensity.toFixed(2)}`);
+    console.log(`  - nextRowHeaderCount: ${nextRowHeaderCount}`);
+    console.log(`  - sikbomStyleDetected: ${sikbomStyleDetected}`);
+    console.log(`  - isMultiRow: ${isMultiRow}`);
     console.log(`Primary row (${primaryHeaderRow}):`, primaryRow);
     console.log(`Next row (${nextRowIndex}):`, nextRow);
+    if (hasPrevRow) {
+      console.log(`Previous row (${prevRowIndex}):`, prevRow);
+    }
+    
+    // Return appropriate header rows based on detection
+    let headerRows: number[];
+    if (isMultiRow) {
+      if (sikbomStyleDetected && hasPrevRow) {
+        headerRows = [prevRowIndex, primaryHeaderRow]; // Use prev + current for Sikbom
+      } else {
+        headerRows = [primaryHeaderRow, nextRowIndex]; // Use current + next for Cafe24
+      }
+    } else {
+      headerRows = [primaryHeaderRow];
+    }
     
     return {
       isMultiRow,
-      headerRows: isMultiRow ? [primaryHeaderRow, nextRowIndex] : [primaryHeaderRow]
+      headerRows
     };
   }
 
