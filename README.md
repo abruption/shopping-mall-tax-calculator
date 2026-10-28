@@ -8,7 +8,7 @@ A cross-platform Electron application for calculating monthly tax-exempt and tax
 - 💰 **Dual Processing Modes**: Traditional (separate tax columns) and Tax Type Classification
 - 🔍 **Multi-Column Support**: Handle complex payment structures (Coupang-style multiple payment methods)
 - 🧠 **Intelligent Header Detection**: Automatically detect and combine multi-row headers (Cafe24-style)
-- 🌏 **Multi-language support** (Korean/English)
+- 🌏 **Korean interface**, with Korean/English locale resources retained for future internationalization
 - 📁 **Flexible File Input**: Manual selection or batch processing
 - 📤 **Export Results**: Excel or CSV format with detailed breakdown
 - 🖥️ **Cross-platform**: Windows, macOS support
@@ -139,7 +139,6 @@ tax-calculator-electron/
 - **TypeScript** - Type-safe JavaScript development  
 - **SWC** - Fast TypeScript/JavaScript compiler (replaced Webpack)
 - **xlsx (SheetJS)** - Excel file processing with advanced parsing
-- **i18next** - Internationalization framework
 - **Jest** - Testing framework with comprehensive test coverage
 - **Electron Store** - Persistent configuration storage
 

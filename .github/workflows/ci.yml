@@ -33,7 +33,7 @@ jobs:
       - name: Record separate audit results (known findings documented)
         run: |
           pnpm audit --json > audit-full.json || true
-          pnpm audit --prod --json > audit-production.json || true
+          pnpm audit --prod --json > audit-production.json
           node -e 'for (const f of ["audit-full.json", "audit-production.json"]) { const a=require("./"+f); if (!a.metadata?.vulnerabilities) throw new Error("Audit did not return a valid result: "+f); console.log(f,a.metadata.vulnerabilities); }'
       - uses: actions/upload-artifact@v4
         with:

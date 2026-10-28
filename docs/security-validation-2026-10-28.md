@@ -55,19 +55,22 @@ Not passed / not run:
 
 ## Separate dependency audit results
 
-`pnpm audit --json`: **60 findings** (41 high, 12 moderate, 7 low).
-`pnpm audit --prod --json`: **18 findings** (12 high, 4 moderate, 2 low).
-These are advisory counts, not 60/18 distinct vulnerable packages or demonstrated
-exploits. Both audit commands return nonzero. No findings were hidden or ignored.
+`pnpm audit --json`: **59 findings** (40 high, 12 moderate, 7 low).
+`pnpm audit --prod --json`: **0 findings**.
+These are advisory counts, not 59/0 distinct vulnerable packages or demonstrated
+exploits. The full audit returns nonzero; the production audit passes. No findings were hidden or ignored.
 
-Production paths still needing a separately tested migration:
+Unused production dependencies removed after source, dynamic-loading, HTML and build-configuration checks:
 
-- `i18next-node-fs-backend@2.1.3` pins `json5@2.0.0` and `js-yaml@3.13.1`.
-  The backend is deprecated; upstream recommends `i18next-fs-backend`. A blind
-  override of exact dependency pins or backend/API migration is not included.
-- `electron-store -> conf -> ajv[/ajv-formats] -> fast-uri@3.0.6` remains flagged
-  for URI parsing/normalization advisories. Application exploitability was not
-  demonstrated; do not interpret a library alert as proof of SSRF here.
+- `i18next-node-fs-backend` and `i18next` were never imported or initialized. The
+  Korean interface and locale JSON resources remain unchanged. Their unused
+  json5/js-yaml dependency path is no longer shipped. README no longer claims an
+  implemented language switch.
+- `electron-store` was never imported or used; its conf/ajv/fast-uri production
+  path is no longer shipped. Packaged app.asar metadata confirms SheetJS is the
+  only production dependency. No settings storage feature was removed.
+- CI now requires the production audit to pass; only the documented legacy
+  development audit remains informational.
 
 Development audit additionally reports tmp, glob, webpack, minimatch,
 serialize-javascript, picomatch, lodash, @xmldom/xmldom, browserslist,
@@ -78,6 +81,6 @@ Electron runtime advisories must be checked upstream because package audit alone
 is not complete coverage.
 
 Comparison against the unchanged baseline lockfile using the same audit service:
-full 167 (5 critical / 90 high / 54 moderate / 18 low) -> 60; production 21
-(0 critical / 14 high / 5 moderate / 2 low) -> 18. No new advisory IDs remain
+full 167 (5 critical / 90 high / 54 moderate / 18 low) -> 59; production 21
+(0 critical / 14 high / 5 moderate / 2 low) -> 0. No new advisory IDs remain
 relative to baseline. This reduction is not a clean audit or proof of reachability.
