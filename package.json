@@ -1,6 +1,6 @@
 {
   "name": "tax-calculator-electron",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "main": "dist/src/main/main.js",
   "scripts": {
     "build": "node scripts/build.js",
