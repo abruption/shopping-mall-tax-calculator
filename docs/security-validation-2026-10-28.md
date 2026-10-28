@@ -31,7 +31,7 @@ Passed on Linux / Node 24.22.1:
 - TypeScript strict typecheck (`tsc --noEmit`). Existing invalid global declaration,
   unknown catch values, implicit callback type and nullable filter types were
   repaired without weakening compiler settings.
-- Jest: 5 suites, 36 tests, including real XLS and XLSX import, header detection,
+- Jest: 7 suites, 64 tests, including real XLS and XLSX import, header detection,
   calculation, XLSX/CSV export, and literal markup-shaped filename rendering.
   Two old mocked expectations were aligned with the existing null-on-invalid-date
   behavior and required explicit column options, not a behavior change.
@@ -55,9 +55,9 @@ Not passed / not run:
 
 ## Separate dependency audit results
 
-`pnpm audit --json`: **59 findings** (40 high, 12 moderate, 7 low).
+`pnpm audit --json`: **1 low finding**.
 `pnpm audit --prod --json`: **0 findings**.
-These are advisory counts, not 59/0 distinct vulnerable packages or demonstrated
+These are advisory counts, not 1/0 distinct vulnerable packages or demonstrated
 exploits. The full audit returns nonzero; the production audit passes. No findings were hidden or ignored.
 
 Unused production dependencies removed after source, dynamic-loading, HTML and build-configuration checks:
@@ -69,18 +69,18 @@ Unused production dependencies removed after source, dynamic-loading, HTML and b
 - `electron-store` was never imported or used; its conf/ajv/fast-uri production
   path is no longer shipped. Packaged app.asar metadata confirms SheetJS is the
   only production dependency. No settings storage feature was removed.
-- CI now requires the production audit to pass; only the documented legacy
-  development audit remains informational.
+- CI now requires the production audit to pass; the full audit rejects every advisory except the exact documented unpatched
+  low Jest development path, retained visibly in its report.
 
-Development audit additionally reports tmp, glob, webpack, minimatch,
-serialize-javascript, picomatch, lodash, @xmldom/xmldom, browserslist,
-js-yaml and deepmerge. These require upstream dependency-path upgrades and/or
-compatibility work. The named brace-expansion findings are resolved; a general
-major-version audit fix was deliberately not forced. CDN SheetJS advisories and
-Electron runtime advisories must be checked upstream because package audit alone
-is not complete coverage.
+The development/build follow-up removed unused swc-loader and patched remaining
+compatible dependency lines. Full audit is now 1 low (deepmerge through Jest,
+upstream has no patched release); production remains 0. See
+[dependency paths, patched versions, reachability and residual risk](development-dependency-audit.md).
+No findings were suppressed. CI reports every full-audit finding and validates only the exact current
+unpatched Jest development risk; any new advisory/version/path/severity or
+published fix requires renewed investigation. Production audit must be clean.
+Plain full audit remains nonzero.
 
-Comparison against the unchanged baseline lockfile using the same audit service:
-full 167 (5 critical / 90 high / 54 moderate / 18 low) -> 59; production 21
-(0 critical / 14 high / 5 moderate / 2 low) -> 0. No new advisory IDs remain
-relative to baseline. This reduction is not a clean audit or proof of reachability.
+Historical comparison using the same audit service: original repository baseline
+167 full / 21 production -> initial PR 59 / 0 -> current 1 / 0. This is not a
+clean full audit or comprehensive coverage of CDN SheetJS/Chromium/Node.

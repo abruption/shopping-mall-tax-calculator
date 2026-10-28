@@ -5,3 +5,15 @@ minimumReleaseAgeExclude:
 # Preserve major-version compatibility for legacy minimatch consumers.
 overrides:
   'brace-expansion@^1.1.7': '1.1.21'
+  # Patched versions remain inside the consumers' declared major/minor ranges.
+  'tmp@>=0.2.0 <0.2.7': '0.2.7'
+  'glob@>=10.2.0 <10.5.0': '10.5.0'
+  'js-yaml@>=3.0.0 <3.15.2': '3.15.2'
+  'js-yaml@>=4.0.0 <4.3.2': '4.3.2'
+  'minimatch@>=3.0.0 <3.1.4': '3.1.4'
+  'minimatch@>=5.0.0 <5.1.8': '5.1.8'
+  'picomatch@>=2.0.0 <2.3.2': '2.3.2'
+  'lodash@>=4.0.0 <4.18.1': '4.18.1'
+  '@xmldom/xmldom@>=0.8.0 <0.8.15': '0.8.15'
+  'fast-uri@>=3.0.0 <3.1.9': '3.1.9'
+  'browserslist@>=4.0.0 <4.28.7': '4.28.7'
