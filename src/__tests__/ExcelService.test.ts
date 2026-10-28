@@ -61,10 +61,8 @@ describe('ExcelService', () => {
       expect(date).toBe(dateObj);
     });
 
-    it('should throw error for invalid date', () => {
-      expect(() => {
-        (excelService as any).parseDate('invalid date');
-      }).toThrow('Unable to parse date: invalid date');
+    it('returns null for invalid dates so invalid rows can be skipped', () => {
+      expect((excelService as any).parseDate('invalid date')).toBeNull();
     });
   });
 
@@ -153,7 +151,7 @@ describe('ExcelService', () => {
       XLSX.readFile.mockReturnValue(mockWorkbook);
       XLSX.utils.sheet_to_json.mockReturnValue(mockData);
 
-      const result = await excelService.readExcelFile('/test/file.xlsx', {});
+      const result = await excelService.readExcelFile('/test/file.xlsx', { dateColumn: '날짜', taxExemptColumn: '면세금액', taxableColumn: '과세금액' });
 
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({

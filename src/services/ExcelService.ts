@@ -521,7 +521,7 @@ export class ExcelService {
         taxExemptAmount,
         taxableAmount
       };
-    }).filter(item => 
+    }).filter((item): item is MonthlyData =>
       item !== null && 
       !isNaN(item.taxExemptAmount) && 
       !isNaN(item.taxableAmount)

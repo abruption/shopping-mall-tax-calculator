@@ -1,12 +1,10 @@
-declare global {
-  interface Window {
+interface Window {
     electronAPI: {
       selectFiles: () => Promise<string[]>;
       processFiles: (filePaths: string[], options: any) => Promise<any>;
       exportResults: (results: any[], format: 'xlsx' | 'csv') => Promise<any>;
       getExcelColumns: (filePath: string) => Promise<any>;
     };
-  }
 }
 
 class TaxCalculatorApp {
@@ -101,17 +99,19 @@ class TaxCalculatorApp {
         this.enableProcessButton();
       }
     } catch (error: any) {
-      this.showError(`파일 선택 중 오류 발생: ${error.message}`);
+      this.showError(`파일 선택 중 오류 발생: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   private updateFileStatus(files: string[]) {
     const fileListElement = document.getElementById('fileList');
     if (fileListElement) {
-      fileListElement.innerHTML = files.map(file => {
-        const fileName = file.split(/[/\\]/).pop() || file;
-        return `<div class="file-item">${fileName}</div>`;
-      }).join('');
+      fileListElement.replaceChildren(...files.map(file => {
+        const item = document.createElement('div');
+        item.className = 'file-item';
+        item.textContent = file.split(/[/\\]/).pop() || file;
+        return item;
+      }));
     }
     this.showStatus(`${files.length}개 파일이 선택되었습니다.`);
   }
@@ -126,7 +126,7 @@ class TaxCalculatorApp {
         this.showError(`컬럼 정보를 읽을 수 없습니다: ${result.error}`);
       }
     } catch (error) {
-      this.showError(`컬럼 정보 로드 중 오류: ${error.message}`);
+      this.showError(`컬럼 정보 로드 중 오류: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -371,7 +371,7 @@ class TaxCalculatorApp {
         this.showError(`처리 중 오류 발생: ${result.error}`);
       }
     } catch (error) {
-      this.showError(`처리 중 오류 발생: ${error.message}`);
+      this.showError(`처리 중 오류 발생: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       this.showLoading(false);
     }
@@ -388,7 +388,7 @@ class TaxCalculatorApp {
       mallDiv.className = 'mall-result';
       
       mallDiv.innerHTML = `
-        <h3>${result.mallName}</h3>
+        <h3></h3>
         <table>
           <thead>
             <tr>
@@ -399,7 +399,7 @@ class TaxCalculatorApp {
             </tr>
           </thead>
           <tbody>
-            ${result.monthlyTotals.map(month => `
+            ${result.monthlyTotals.map((month: { year: number; month: number; taxExempt: number; taxable: number; total: number }) => `
               <tr>
                 <td>${month.year}년 ${month.month}월</td>
                 <td>${this.formatCurrency(month.taxExempt)}</td>
@@ -428,6 +428,7 @@ class TaxCalculatorApp {
         </div>
       `;
       
+      mallDiv.querySelector('h3')!.textContent = result.mallName;
       resultsContainer.appendChild(mallDiv);
     });
   }
@@ -453,7 +454,7 @@ class TaxCalculatorApp {
         this.showStatus(`파일이 저장되었습니다: ${result.path}`);
       }
     } catch (error) {
-      this.showError(`내보내기 중 오류 발생: ${error.message}`);
+      this.showError(`내보내기 중 오류 발생: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

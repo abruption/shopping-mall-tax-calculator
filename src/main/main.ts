@@ -72,7 +72,7 @@ ipcMain.handle('process-files', async (event, filePaths: string[], options: Proc
     
     return { success: true, data: results };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 });
 
@@ -96,7 +96,7 @@ ipcMain.handle('get-excel-columns', async (event, filePath: string) => {
     const columns = await excelService.getColumnHeaders(filePath);
     return { success: true, columns };
   } catch (error) {
-    return { success: false, error: error.message };
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
   }
 });
 
