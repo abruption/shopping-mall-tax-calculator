@@ -36,4 +36,7 @@ function runCommand(command, args) {
   });
 }
 
-build().catch(console.error);
+build().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -16,15 +16,16 @@ A cross-platform Electron application for calculating monthly tax-exempt and tax
 
 ## Prerequisites
 
-- Node.js (v14 or higher)
-- pnpm package manager
+- Node.js 24 LTS, version 24.22.1 or later
+- macOS 13 or later for the Electron 44 application
+- pnpm 11.25.0 (the authoritative package manager)
 
 ## Installation
 
 1. Clone the repository
 2. Install dependencies:
    ```bash
-   pnpm install
+   pnpm install --frozen-lockfile
    ```
 
 ## Supported Excel Formats
@@ -145,3 +146,18 @@ tax-calculator-electron/
 ## License
 
 ISC
+## Dependency security baseline
+
+Use only `pnpm-lock.yaml`; do not generate a separate npm/yarn lockfile. SheetJS
+CE 0.20.3 is pinned to the official CDN tarball with lockfile integrity because
+npm's `xlsx` 0.18.5 is obsolete. See the [official installation guide](https://docs.sheetjs.com/docs/getting-started/installation/nodejs/).
+Electron is pinned to 44.10.0 (Node 24.22.1 / Chromium 152.0.7977.169).
+The Electron 37–44 migration retains context isolation and disabled Node integration;
+the application uses BrowserWindow, dialog and IPC, not the removed desktop capture,
+WebContents navigation or deprecated utility APIs. macOS 12 is no longer supported.
+See [Electron breaking changes](https://www.electronjs.org/docs/latest/breaking-changes).
+
+Validation: `pnpm type-check`, `pnpm test --runInBand`, `pnpm build`, and
+`pnpm pack`. Audit development and shipped dependencies separately with
+`pnpm audit` and `pnpm audit --prod`. Audit output is not proof of parser safety;
+CDN packages and packaged Chromium/Node must also be checked against upstream advisories.

@@ -1,0 +1,41 @@
+name: Security baseline CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '11.25.0'
+          run_install: false
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm type-check
+      - run: pnpm test --runInBand
+      - run: pnpm build
+      - name: Install verified Electron binary
+        run: node node_modules/electron/install.js
+      - name: Package Linux application (no publish)
+        run: pnpm exec electron-builder --dir --linux --config.electronDist=node_modules/electron/dist
+      - name: Verify packaged runtime
+        env:
+          ELECTRON_RUN_AS_NODE: '1'
+        run: |
+          build/linux-unpacked/tax-calculator-electron -e 'const v=process.versions; if(v.electron!=="44.10.0" || v.node!=="24.22.1" || v.chrome!=="152.0.7977.169") process.exit(1); console.log(JSON.stringify({electron:v.electron,node:v.node,chrome:v.chrome}));'
+      - name: Record separate audit results (known findings documented)
+        run: |
+          pnpm audit --json > audit-full.json || true
+          pnpm audit --prod --json > audit-production.json || true
+          node -e 'for (const f of ["audit-full.json", "audit-production.json"]) { const a=require("./"+f); if (!a.metadata?.vulnerabilities) throw new Error("Audit did not return a valid result: "+f); console.log(f,a.metadata.vulnerabilities); }'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audits
+          path: audit-*.json
