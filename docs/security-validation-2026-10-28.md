@@ -18,7 +18,10 @@ application has no vulnerabilities.
   release. Dependency install scripts were initially skipped for review; only
   Electron's official installer was explicitly run to obtain its checked binary.
 - `pnpm-lock.yaml` is the single lockfile, matching the existing pnpm scripts.
-  Other dependency changes remain within their existing major ranges.
+  SWC CLI is explicitly pinned to 0.8.1: its official downloader chain uses
+  patched file-type 21.3.4+, avoiding a development-only decompression advisory
+  introduced by the 0.7.x dependency refresh. Both build and watch CLI paths were
+  tested. Other dependency changes remain within their existing major ranges.
 
 ## Checks
 
@@ -52,9 +55,9 @@ Not passed / not run:
 
 ## Separate dependency audit results
 
-`pnpm audit --json`: **62 findings** (41 high, 14 moderate, 7 low).
+`pnpm audit --json`: **60 findings** (41 high, 12 moderate, 7 low).
 `pnpm audit --prod --json`: **18 findings** (12 high, 4 moderate, 2 low).
-These are advisory counts, not 62/18 distinct vulnerable packages or demonstrated
+These are advisory counts, not 60/18 distinct vulnerable packages or demonstrated
 exploits. Both audit commands return nonzero. No findings were hidden or ignored.
 
 Production paths still needing a separately tested migration:
@@ -67,9 +70,14 @@ Production paths still needing a separately tested migration:
   demonstrated; do not interpret a library alert as proof of SSRF here.
 
 Development audit additionally reports tmp, glob, webpack, minimatch,
-serialize-javascript, file-type, picomatch, lodash, @xmldom/xmldom, browserslist,
+serialize-javascript, picomatch, lodash, @xmldom/xmldom, browserslist,
 js-yaml and deepmerge. These require upstream dependency-path upgrades and/or
 compatibility work. The named brace-expansion findings are resolved; a general
 major-version audit fix was deliberately not forced. CDN SheetJS advisories and
 Electron runtime advisories must be checked upstream because package audit alone
 is not complete coverage.
+
+Comparison against the unchanged baseline lockfile using the same audit service:
+full 167 (5 critical / 90 high / 54 moderate / 18 low) -> 60; production 21
+(0 critical / 14 high / 5 moderate / 2 low) -> 18. No new advisory IDs remain
+relative to baseline. This reduction is not a clean audit or proof of reachability.
